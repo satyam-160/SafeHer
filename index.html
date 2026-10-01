@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeHer — Women Safety SOS Keychain | Hackathon Simulation</title>
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="preconnect" href="https://tile.openstreetmap.org">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<header class="site-header">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="26" height="26">
+        <path d="M16 3 L27 7 v9 c0 7-5 11.5-11 13-6-1.5-11-6-11-13V7z"
+              fill="none" stroke="#ec4899" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M11 16.5 l3.5 3.5 L21 13" fill="none" stroke="#ec4899"
+              stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>SafeHer</h1>
+      <p>Women-safety SOS keychain &mdash; hardware-free interactive simulation</p>
+    </div>
+  </div>
+  <div class="header-badges">
+    <span class="badge">SPARK HACKATHON 2026</span>
+    <span class="badge badge-live" id="hdrClock">--:--:--</span>
+  </div>
+</header>
+
+<!-- ==================== SAFETY BANNER ==================== -->
+<div class="safety-banner" role="note">
+  <strong>SIMULATION ONLY.</strong>
+  No real SMS is sent, no real call is placed, no emergency service is contacted.
+  All names, numbers and locations on this page are fictional demo data.
+</div>
+
+<!-- ==================== AUTO-DEMO CAPTION ==================== -->
+<div class="caption-bar" id="captionBar" hidden>
+  <span class="caption-badge">AUTO DEMO</span>
+  <p id="captionText">&nbsp;</p>
+</div>
+
+<!-- ==================== STATE MACHINE DEBUG STRIP ==================== -->
+<section class="state-strip-wrap" aria-label="State machine status">
+  <div class="state-strip" id="stateStrip">
+    <span class="state-node" data-state="IDLE">IDLE</span>
+    <span class="state-arrow">&rsaquo;</span>
+    <span class="state-node" data-state="ARMING">ARMING</span>
+    <span class="state-arrow">&rsaquo;</span>
+    <span class="state-node" data-state="ALARM_ACTIVE">ALARM_ACTIVE</span>
+    <span class="state-arrow">&rsaquo;</span>
+    <span class="state-node" data-state="GETTING_LOCATION">GETTING_LOCATION</span>
+    <span class="state-arrow">&rsaquo;</span>
+    <span class="state-node" data-state="SENDING_SMS">SENDING_SMS</span>
+    <span class="state-arrow">&rsaquo;</span>
+    <span class="state-node" data-state="CALLING">CALLING</span>
+    <span class="state-arrow">&rsaquo;</span>
+    <span class="state-node" data-state="ACTIVE_ALERT">ACTIVE_ALERT</span>
+  </div>
+  <div class="state-readout">
+    <span class="readout-label">STATE</span>
+    <span class="readout-value" id="stateValue">IDLE</span>
+  </div>
+</section>
+
+<!-- ==================== MAIN 3-PANEL SIMULATOR ==================== -->
+<main class="sim-grid">
+
+  <!-- ---------- PANEL 1 : DEVICE ---------- -->
+  <section class="panel panel-device" aria-label="Virtual SafeHer device">
+    <h2 class="panel-title"><span class="dot"></span>1 &middot; SafeHer Device</h2>
+
+    <div class="device-stage">
+      <div class="keychain" id="keychain">
+        <!-- lanyard ring -->
+        <div class="lanyard" aria-hidden="true"></div>
+        <div class="lanyard-ring" aria-hidden="true"></div>
+
+        <div class="device-body">
+          <div class="device-topline">
+            <span class="device-brand">SafeHer</span>
+            <span class="device-model">SH-01</span>
+          </div>
+
+          <!-- OLED -->
+          <div class="oled" id="oled">
+            <div class="oled-line"><span class="oled-k">GPS:</span><span class="oled-v" id="oledGps">ACQUIRING</span></div>
+            <div class="oled-line"><span class="oled-k">SIM:</span><span class="oled-v" id="oledSim">4G 0042</span></div>
+            <div class="oled-line"><span class="oled-k">SOS:</span><span class="oled-v" id="oledSos">IDLE</span></div>
+            <div class="oled-line"><span class="oled-k">BAT:</span><span class="oled-v" id="oledBat">3.80V 100%</span></div>
+            <div class="oled-line oled-msg" id="oledMsg">READY</div>
+          </div>
+
+          <!-- LEDs -->
+          <div class="leds" role="group" aria-label="Status indicators">
+            <div class="led-item">
+              <span class="led led-green" id="ledPower"></span><small>PWR</small>
+            </div>
+            <div class="led-item">
+              <span class="led led-blue" id="ledNet"></span><small>NET</small>
+            </div>
+            <div class="led-item">
+              <span class="led led-red" id="ledAlert"></span><small>ALT</small>
+            </div>
+          </div>
+
+          <!-- SOS BUTTON with progress ring -->
+          <div class="sos-wrap">
+            <svg class="sos-ring" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+              <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <button class="sos-button" id="sosButton" type="button"
+                    aria-label="Emergency SOS button. Press and hold for 3 seconds to trigger.">
+              <span class="sos-sheen"></span>
+              <span class="sos-text">SOS</span>
+            </button>
+          </div>
+          <p class="hold-hint" id="holdHint">Press &amp; hold 3s to alert</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="device-specs">
+      <div><small>GSM / SIM</small><b id="specSim">4G &middot; Airtel</b></div>
+      <div><small>Satellites</small><b id="specSats">12 locked</b></div>
+      <div><small>Contacts</small><b id="specContacts">3 trusted</b></div>
+      <div><small>Battery</small><b id="specBattery">3.80V &middot; 100%</b></div>
+    </div>
+  </section>
+
+  <!-- ---------- PANEL 2 : MAP ---------- -->
+  <section class="panel panel-map" aria-label="Victim location map">
+    <h2 class="panel-title"><span class="dot"></span>2 &middot; Victim's Location</h2>
+
+    <div class="map-tools">
+      <label class="tool">
+        <span>Start location</span>
+        <input type="text" id="startLoc" value="28.6139, 77.2090" spellcheck="false"
+               aria-label="Default start location as latitude, longitude">
+      </label>
+      <button class="btn btn-ghost btn-sm" id="applyLoc" type="button">Set</button>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-badge" id="mapBadge">LIVE &middot; 0s ago</div>
+    </div>
+
+    <div class="map-toggles">
+      <div class="toggle-row">
+        <span class="toggle-label">GPS signal</span>
+        <div class="seg" role="group" aria-label="GPS signal strength">
+          <button class="seg-btn is-on" data-gps="good" type="button">Good</button>
+          <button class="seg-btn" data-gps="weak" type="button">Weak</button>
+          <button class="seg-btn" data-gps="none" type="button">No fix</button>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="movementToggle">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+          <span class="switch-text">Simulate movement</span>
+        </label>
+      </div>
+      <p class="map-note" id="gpsNote">GPS: 12 satellites locked &mdash; high accuracy</p>
+    </div>
+  </section>
+
+  <!-- ---------- PANEL 3 : PHONE ---------- -->
+  <section class="panel panel-phone" aria-label="Trusted contact phone">
+    <h2 class="panel-title"><span class="dot"></span>3 &middot; Trusted Contact</h2>
+
+    <div class="contacts-head">
+      <span>Contact</span><span>SMS</span><span>Call</span>
+    </div>
+    <ul class="contact-list" id="contactList"></ul>
+
+    <p class="phone-hint">Messages and calls below are <b>fictional</b>.</p>
+
+    <!-- phone mockup -->
+    <div class="phone" id="phoneMock">
+      <div class="phone-notch" aria-hidden="true"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span id="phoneSignal">SafeHer&ndash;Trusted</span>
+          <span id="phoneTime">--:--</span>
+        </div>
+
+        <!-- SMS thread view -->
+        <div class="sms-view" id="smsView">
+          <div class="sms-empty" id="smsEmpty">
+            <div class="sms-empty-icon" aria-hidden="true">&#9993;</div>
+            <p>No messages yet</p>
+            <small>Trigger the SOS button to alert your trusted contacts.</small>
+          </div>
+          <div class="sms-thread" id="smsThread"></div>
+        </div>
+
+        <!-- incoming call view -->
+        <div class="call-view" id="callView" hidden>
+          <div class="call-pulse" aria-hidden="true"></div>
+          <div class="call-avatar" aria-hidden="true">SH</div>
+          <div class="call-name" id="callName">SafeHer SOS</div>
+          <div class="call-sub" id="callSub">incoming call&hellip;</div>
+          <div class="call-timer" id="callTimer">00:00</div>
+          <div class="call-actions">
+            <button class="call-btn call-decline" id="callDecline" type="button">Decline</button>
+            <button class="call-btn call-accept" id="callAccept" type="button">Accept</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ==================== CONTROL PANEL ==================== -->
+<section class="panel panel-controls" aria-label="Demo controls">
+  <h2 class="panel-title"><span class="dot"></span>4 &middot; Demo Controls</h2>
+
+  <div class="controls-grid">
+    <div class="control-block">
+      <span class="control-label">Network</span>
+      <div class="seg seg-wide" role="group" aria-label="Network type">
+        <button class="seg-btn is-on" data-net="4g" type="button">4G</button>
+        <button class="seg-btn" data-net="2g" type="button">2G</button>
+        <button class="seg-btn" data-net="none" type="button">No network</button>
+      </div>
+    </div>
+
+    <div class="control-block">
+      <label class="control-label" for="battery">Battery &mdash; <b id="batteryVal">100%</b></label>
+      <input type="range" id="battery" min="0" max="100" value="100" step="1">
+      <small class="control-note" id="batteryNote">Full charge</small>
+    </div>
+
+    <div class="control-block">
+      <label class="switch">
+        <input type="checkbox" id="muteToggle">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        <span class="switch-text">Mute alarm</span>
+      </label>
+      <p class="control-note">Browsers block audio until you interact with the page.</p>
+    </div>
+
+    <div class="control-block control-actions">
+      <button class="btn btn-primary" id="autoRunBtn" type="button">
+        <span id="autoRunLabel">&#9654; Auto-run demo</span>
+      </button>
+      <button class="btn btn-ghost" id="resetBtn" type="button">Reset</button>
+    </div>
+  </div>
+
+  <div class="log-wrap">
+    <div class="log-head">
+      <span>Event log</span>
+      <button class="btn btn-ghost btn-xs" id="clearLog" type="button">Clear</button>
+    </div>
+    <ol class="event-log" id="eventLog" aria-live="polite" aria-label="Event log"></ol>
+  </div>
+</section>
+
+<!-- ==================== HOW IT WORKS ==================== -->
+<section class="info-section" aria-label="How it works">
+  <h2 class="section-title">How it works</h2>
+  <ol class="steps">
+    <li class="step">
+      <span class="step-num">1</span>
+      <h3>Press</h3>
+      <p>Hold the physical SOS button for 3 seconds. No unlock, no menu, no typing &mdash; works from a pocket or a bag.</p>
+    </li>
+    <li class="step">
+      <span class="step-num">2</span>
+      <h3>Locate</h3>
+      <p>ESP32 acquires a GPS fix and falls back to the last known location if satellites are lost.</p>
+    </li>
+    <li class="step">
+      <span class="step-num">3</span>
+      <h3>Alert</h3>
+      <p>A single SMS with a live maps link is dispatched to all 3 trusted contacts over the cellular network.</p>
+    </li>
+    <li class="step">
+      <span class="step-num">4</span>
+      <h3>Call</h3>
+      <p>The device auto-dials the contacts in priority order until one of them answers.</p>
+    </li>
+    <li class="step">
+      <span class="step-num">5</span>
+      <h3>Alarm</h3>
+      <p>A 125&nbsp;dB siren runs to attract attention nearby. Hold 5s to send &ldquo;I am safe&rdquo; and stop it.</p>
+    </li>
+  </ol>
+</section>
+
+<!-- ==================== HARDWARE ==================== -->
+<section class="info-section" aria-label="Planned hardware">
+  <h2 class="section-title">Hardware <span class="section-sub">(planned build)</span></h2>
+  <p class="section-note">
+    This page is a <b>software simulation of the planned device</b>. The hardware build is the next phase &mdash;
+    BOM, firmware and the PCB layout are the follow-up deliverable.
+  </p>
+  <div class="hw-grid">
+    <div class="hw-card"><b>ESP32-S3</b><span>Dual-core MCU with BLE &amp; Wi-Fi &mdash; runs the whole state machine</span></div>
+    <div class="hw-card"><b>GPS NEO-6M</b><span>Standalone location fix, stores last known position in flash</span></div>
+    <div class="hw-card"><b>4G SIM module</b><span>LTE modem for SMS + auto-dial on the cellular network</span></div>
+    <div class="hw-card"><b>INMP441</b><span>I&sup2;S microphone &mdash; records ambient audio as evidence</span></div>
+    <div class="hw-card"><b>MAX98357A</b><span>Class-D amplifier driving the siren speaker</span></div>
+    <div class="hw-card"><b>0.96&Prime; OLED</b><span>SSD1306 display &mdash; shows GPS, SIM, SOS and battery status</span></div>
+    <div class="hw-card"><b>Li-ion + TP4056</b><span>Rechargeable cell with charge/protection IC and fuel gauge</span></div>
+    <div class="hw-card"><b>Big SOS button</b><span>IP54 tactile switch, usable blindly &mdash; the only interaction needed</span></div>
+  </div>
+</section>
+
+<!-- ==================== FUTURE SCOPE ==================== -->
+<section class="info-section" aria-label="Future scope">
+  <h2 class="section-title">Future scope</h2>
+  <div class="future-grid">
+    <div class="future-card">
+      <h3>Voice code-word trigger</h3>
+      <p>Offline keyword spotting on the INMP441 mic &mdash; shouting a code word triggers SOS even if the device is dropped.</p>
+    </div>
+    <div class="future-card">
+      <h3>Companion app</h3>
+      <p>Guardian-side app with live tracking, an SOS history timeline and a &ldquo;safe&rdquo; check-in reminder.</p>
+    </div>
+    <div class="future-card">
+      <h3>Cloud dashboard</h3>
+      <p>Police / NGO control room view with clustered alerts, response timers and incident analytics.</p>
+    </div>
+    <div class="future-card">
+      <h3>112 integration</h3>
+      <p>Direct hand-off of the live location to the national emergency response system.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <p><b>SafeHer</b> &mdash; SIH 2026 prototype. Simulation only: no real SMS, no real calls, no real emergency contact.</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>
